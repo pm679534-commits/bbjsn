@@ -3,7 +3,20 @@ import os
 
 from anthropic import AsyncAnthropic
 
-client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+# Rəsmi Anthropic API-dən fərqli bir endpoint (proksi/relay xidməti,
+# özünüzün host etdiyiniz gateway və s.) istifadə edirsinizsə,
+# ANTHROPIC_BASE_URL-i .env-də təyin edin. Boş buraxsanız SDK avtomatik
+# olaraq rəsmi https://api.anthropic.com ünvanına gedir.
+_base_url = os.getenv("ANTHROPIC_BASE_URL") or None
+
+client = AsyncAnthropic(
+    api_key=os.getenv("ANTHROPIC_API_KEY"),
+    base_url=_base_url,
+)
+
+# Bəzi proksi/relay xidmətləri model adını fərqli formatda gözləyir
+# (məs. "anthropic/claude-sonnet-4-6" kimi). Lazım gələrsə .env-də dəyişin.
+MODEL_NAME = os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-4-6"
 
 SYSTEM_PROMPT = """Sən WordPress plugin kodunu nəzərdən keçirən təhlükəsizlik \
 auditorusan. Sənə Semgrep-in tapdığı BİR statik analiz nəticəsi (qayda + kod \
@@ -48,7 +61,7 @@ async def triage_one(finding: dict) -> dict:
 
     try:
         resp = await client.messages.create(
-            model="claude-sonnet-4-6",
+            model=MODEL_NAME,
             max_tokens=200,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
