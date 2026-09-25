@@ -1,0 +1,97 @@
+rules:
+  - id: wp-unprepared-wpdb-query
+    languages: [php]
+    severity: WARNING
+    message: >
+      $wpdb sorğusu $wpdb->prepare() istifadə etmədən icra olunur. Sorğuya
+      istifadəçi girişi (user input) daxil edilirsə, bu SQL Injection
+      riski yaradır.
+    patterns:
+      - pattern-either:
+          - pattern: $wpdb->query($QUERY)
+          - pattern: $wpdb->get_results($QUERY)
+          - pattern: $wpdb->get_row($QUERY)
+          - pattern: $wpdb->get_var($QUERY)
+          - pattern: $wpdb->get_col($QUERY)
+      - pattern-not: $wpdb->query($wpdb->prepare(...))
+      - pattern-not: $wpdb->get_results($wpdb->prepare(...))
+      - pattern-not: $wpdb->get_row($wpdb->prepare(...))
+      - pattern-not: $wpdb->get_var($wpdb->prepare(...))
+      - pattern-not: $wpdb->get_col($wpdb->prepare(...))
+
+  - id: wp-superglobal-direct-assignment
+    languages: [php]
+    severity: WARNING
+    message: >
+      $_GET/$_POST/$_REQUEST dəyəri heç bir sanitizasiya funksiyası
+      görünmədən dəyişənə mənimsədilir. Bu dəyərin sonradan SQL, output
+      və ya fayl əməliyyatında filtrsiz istifadə olunub-olunmadığını yoxlayın.
+    patterns:
+      - pattern-either:
+          - pattern: $X = $_GET[...]
+          - pattern: $X = $_POST[...]
+          - pattern: $X = $_REQUEST[...]
+
+  - id: wp-echo-of-superglobal
+    languages: [php]
+    severity: WARNING
+    message: >
+      $_GET/$_POST/$_REQUEST dəyəri esc_html/esc_attr kimi escape funksiyası
+      olmadan birbaşa çap olunur (echo/print). Reflected XSS riski.
+    patterns:
+      - pattern-either:
+          - pattern: echo $_GET[...]
+          - pattern: echo $_POST[...]
+          - pattern: echo $_REQUEST[...]
+          - pattern: print $_GET[...]
+          - pattern: print $_POST[...]
+
+  - id: wp-missing-nonce-in-handler
+    languages: [php]
+    severity: INFO
+    message: >
+      Adından "save/update/delete/handle/process" görünən funksiyada
+      check_admin_referer/wp_verify_nonce çağırışı aşkarlanmadı — CSRF
+      riski ola bilər. Bu, hevristik bir işarədir, əl ilə təsdiqləyin.
+    patterns:
+      - pattern: |
+          function $FUNC(...) {
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            check_admin_referer(...);
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            wp_verify_nonce(...);
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: .*(save|update|delete|handle|process).*
+
+  - id: wp-missing-capability-check
+    languages: [php]
+    severity: INFO
+    message: >
+      Adından admin əməliyyatı görünən funksiyada current_user_can()
+      yoxlaması aşkarlanmadı — icazə (authorization) çatışmazlığı ola bilər.
+      Hevristik işarədir, əl ilə təsdiqləyin.
+    patterns:
+      - pattern: |
+          function $FUNC(...) {
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            current_user_can(...);
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: .*(delete|remove|save_settings|update_settings|install|uninstall).*
