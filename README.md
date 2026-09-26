@@ -49,6 +49,10 @@ Telegram-da bota:
 - `/scan contact-form-7` — bir plugini skan edir
 - `/scan_list slug1,slug2,slug3` — bir neçəsini ardıcıl skan edir (max 15,
   aralarında 3 saniyə gözləmə var — wordpress.org serverlərinə hörmət üçün)
+- `/scan_bulk 20` — wordpress.org-un ən populyar 20 pluginini avtomatik
+  çəkib ardıcıl skan edir (max 50 — AI xərci və vaxt üçün). Nəticədə hər
+  plugin üçün ayrıca hesabat + sonda ümumi xülasə gəlir.
+- `/stop` — davam edən `/scan_bulk` prosesini dayandırır
 
 ## Nəticələri necə istifadə etməli — vacib
 
