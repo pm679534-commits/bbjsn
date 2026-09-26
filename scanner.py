@@ -42,6 +42,11 @@ def run_semgrep(plugin_path: Path) -> list[dict]:
     """
     Semgrep-i həm bizim custom WordPress qaydaları, həm də Semgrep-in
     ictimai PHP registry qaydaları ilə işlədir.
+
+    Qeyd: Semgrep bəzən (bir qaydanın pattern-i sınıqdırsa, timeout olsa və s.)
+    returncode 0/1-dən fərqli bir kod qaytarır, amma yenə də etibarlı JSON
+    nəticə çıxarır (digər qaydalar problemsiz işləmiş olur). Ona görə əsas
+    meyar returncode deyil, stdout-un etibarlı JSON olub-olmamasıdır.
     """
     cmd = [
         "semgrep",
@@ -50,13 +55,25 @@ def run_semgrep(plugin_path: Path) -> list[dict]:
         "--json",
         "--quiet",
         "--timeout", "120",
+        "--max-memory", "400",
+        "--jobs", "1",
         str(plugin_path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
 
-    # Semgrep: 0 = tapıntı yoxdur, 1 = tapıntı var (hər ikisi normal nəticədir)
-    if result.returncode not in (0, 1):
-        raise RuntimeError(result.stderr[:800] or "naməlum semgrep xətası")
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        # Stdout etibarlı JSON deyil — bu, əsl fatal xətadır
+        detail = result.stderr.strip() or result.stdout.strip() or "boş çıxış"
+        raise RuntimeError(f"(exit code {result.returncode}) {detail[:800]}")
 
-    data = json.loads(result.stdout)
+    # JSON etibarlıdırsa, nəticələri qaytarırıq. errors sahəsi varsa
+    # (məs. bir qaydanın pattern-i sınıqdır), bu qismi xətadır, fatal deyil —
+    # sadəcə konsola loglayırıq ki, sonradan qayda düzəldilə bilsin.
+    rule_errors = data.get("errors", [])
+    if rule_errors:
+        for err in rule_errors:
+            print(f"[semgrep qayda xəbərdarlığı] {err.get('rule_id')}: {err.get('message', '')[:200]}")
+
     return data.get("results", [])
